@@ -45,6 +45,7 @@ FILE_LICENCE ( GPL2_OR_LATER );
 
 /* Include all architecture-independent I/O API headers */
 #include <gpxe/efi/efi_timer.h>
+#include <gpxe/linux/linux_timer.h>
 
 /* Include all architecture-dependent I/O API headers */
 #include <bits/timer.h>
