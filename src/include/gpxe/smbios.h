@@ -26,6 +26,7 @@ FILE_LICENCE ( GPL2_OR_LATER );
 
 /* Include all architecture-independent SMBIOS API headers */
 #include <gpxe/efi/efi_smbios.h>
+#include <gpxe/linux/linux_smbios.h>
 
 /* Include all architecture-dependent SMBIOS API headers */
 #include <bits/smbios.h>
