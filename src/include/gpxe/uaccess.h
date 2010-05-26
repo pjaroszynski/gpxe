@@ -189,6 +189,7 @@ trivial_memchr_user ( userptr_t buffer, off_t offset, int c, size_t len ) {
 
 /* Include all architecture-independent user access API headers */
 #include <gpxe/efi/efi_uaccess.h>
+#include <gpxe/linux/linux_uaccess.h>
 
 /* Include all architecture-dependent user access API headers */
 #include <bits/uaccess.h>
