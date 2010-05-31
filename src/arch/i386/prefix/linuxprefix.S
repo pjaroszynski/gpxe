@@ -16,6 +16,8 @@ _start:
 	pushl	%edi // argv -> C arg2
 	pushl	%esi // argc -> C arg1
 
+	call	save_args
+
 	call	main
 
 	movl	%eax, %ebx // rc -> syscall arg1
