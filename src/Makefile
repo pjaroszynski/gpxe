@@ -72,6 +72,7 @@ SRCDIRS		+= drivers/block
 SRCDIRS		+= drivers/nvs
 SRCDIRS		+= drivers/bitbash
 SRCDIRS		+= drivers/infiniband
+SRCDIRS		+= drivers/linux
 SRCDIRS		+= interface/pxe interface/efi interface/smbios interface/linux
 SRCDIRS		+= tests
 SRCDIRS		+= crypto crypto/axtls crypto/matrixssl
