@@ -1,0 +1,7 @@
+LDSCRIPT=arch/i386/scripts/linuxlibc.lds
+
+# breaks stdlibs
+CFLAGS += -mregparm=0 -mno-rtd
+
+MAKEDEPS	+= arch/x86/Makefile.linuxlibc
+include arch/x86/Makefile.linuxlibc

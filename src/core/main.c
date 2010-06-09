@@ -22,6 +22,7 @@ FILE_LICENCE ( GPL2_OR_LATER );
 #include <gpxe/image.h>
 #include <usr/autoboot.h>
 #include <config/general.h>
+#include <hci/linux_args.h>
 
 #define NORMAL	"\033[0m"
 #define BOLD	"\033[1m"
@@ -32,7 +33,12 @@ FILE_LICENCE ( GPL2_OR_LATER );
  *
  * @ret rc		Return status code
  */
+#ifdef PLATFORM_linuxlibc
+__asmcall int main ( int argc, char ** argv ) {
+	save_args ( argc, argv );
+#else
 __asmcall int main ( void ) {
+#endif
 	struct feature *feature;
 	struct image *image;
 

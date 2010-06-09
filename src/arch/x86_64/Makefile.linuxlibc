@@ -1,0 +1,4 @@
+LDSCRIPT=arch/x86_64/scripts/linuxlibc.lds
+
+MAKEDEPS	+= arch/x86/Makefile.linuxlibc
+include arch/x86/Makefile.linuxlibc
