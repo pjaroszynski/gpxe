@@ -27,6 +27,8 @@ FILE_LICENCE ( GPL2_OR_LATER );
 #include <gpxe/init.h>
 #include <gpxe/malloc.h>
 
+#include <valgrind/memcheck.h>
+
 /** @file
  *
  * Dynamic memory allocation
@@ -85,6 +87,29 @@ size_t freemem;
 /** The heap itself */
 static char heap[HEAP_SIZE] __attribute__ (( aligned ( __alignof__(void *) )));
 
+
+static inline void valgrind_make_blocks_defined ( void )
+{
+	struct memory_block *block;
+
+	if (RUNNING_ON_VALGRIND > 0) {
+		VALGRIND_MAKE_MEM_DEFINED ( &free_blocks, sizeof ( free_blocks ) );
+		list_for_each_entry ( block, &free_blocks, list )
+			VALGRIND_MAKE_MEM_DEFINED ( block, sizeof ( *block ) );
+	}
+}
+
+static inline void valgrind_make_blocks_noaccess ( void )
+{
+	struct memory_block *block, *tmp;
+
+	if ( RUNNING_ON_VALGRIND > 0 ) {
+		list_for_each_entry_safe ( block, tmp, &free_blocks, list )
+			VALGRIND_MAKE_MEM_NOACCESS ( block, sizeof ( *block ) );
+		VALGRIND_MAKE_MEM_NOACCESS ( &free_blocks, sizeof ( free_blocks ) );
+	}
+}
+
 /**
  * Allocate a memory block
  *
@@ -104,6 +129,9 @@ void * alloc_memblock ( size_t size, size_t align ) {
 	ssize_t post_size;
 	struct memory_block *pre;
 	struct memory_block *post;
+	struct memory_block *ret = NULL;
+
+	valgrind_make_blocks_defined ( );
 
 	/* Round up size to multiple of MIN_MEMBLOCK_SIZE and
 	 * calculate alignment mask.
@@ -135,6 +163,7 @@ void * alloc_memblock ( size_t size, size_t align ) {
 			 * the heap).
 			 */
 			if ( ( size_t ) post_size >= MIN_MEMBLOCK_SIZE ) {
+				VALGRIND_MAKE_MEM_DEFINED ( post, sizeof ( *post ) );
 				post->size = post_size;
 				list_add ( &post->list, &pre->list );
 			}
@@ -155,12 +184,17 @@ void * alloc_memblock ( size_t size, size_t align ) {
 			/* Return allocated block */
 			DBG ( "Allocated [%p,%p)\n", block,
 			      ( ( ( void * ) block ) + size ) );
-			return block;
+			ret = block;
+			goto success;
 		}
 	}
-
 	DBG ( "Failed to allocate %#zx (aligned %#zx)\n", size, align );
-	return NULL;
+
+success:
+
+	valgrind_make_blocks_noaccess ( );
+
+	return ret;
 }
 
 /**
@@ -181,11 +215,14 @@ void free_memblock ( void *ptr, size_t size ) {
 	if ( ! ptr )
 		return;
 
+	valgrind_make_blocks_defined ( );
+
 	/* Round up size to match actual size that alloc_memblock()
 	 * would have used.
 	 */
 	size = ( size + MIN_MEMBLOCK_SIZE - 1 ) & ~( MIN_MEMBLOCK_SIZE - 1 );
 	freeing = ptr;
+	VALGRIND_MAKE_MEM_DEFINED ( freeing, sizeof ( *freeing ) );
 	freeing->size = size;
 	DBG ( "Freeing [%p,%p)\n", freeing, ( ( ( void * ) freeing ) + size ));
 
@@ -228,6 +265,8 @@ void free_memblock ( void *ptr, size_t size ) {
 
 	/* Update free memory counter */
 	freemem += size;
+
+	valgrind_make_blocks_noaccess ( );
 }
 
 /**
@@ -267,8 +306,11 @@ void * realloc ( void *old_ptr, size_t new_size ) {
 		new_block = alloc_memblock ( new_total_size, 1 );
 		if ( ! new_block )
 			return NULL;
+		VALGRIND_MAKE_MEM_UNDEFINED ( new_block, offsetof ( struct autosized_block, data ) );
 		new_block->size = new_total_size;
+		VALGRIND_MAKE_MEM_NOACCESS ( new_block, offsetof ( struct autosized_block, data ) );
 		new_ptr = &new_block->data;
+		VALGRIND_MALLOCLIKE_BLOCK ( new_ptr, new_size, 0, 0 );
 	}
 	
 	/* Copy across relevant part of the old data region (if any),
@@ -279,12 +321,15 @@ void * realloc ( void *old_ptr, size_t new_size ) {
 	if ( old_ptr && ( old_ptr != NOWHERE ) ) {
 		old_block = container_of ( old_ptr, struct autosized_block,
 					   data );
+		VALGRIND_MAKE_MEM_DEFINED ( old_block, offsetof ( struct autosized_block, data ) );
 		old_total_size = old_block->size;
 		old_size = ( old_total_size -
 			     offsetof ( struct autosized_block, data ) );
 		memcpy ( new_ptr, old_ptr,
 			 ( ( old_size < new_size ) ? old_size : new_size ) );
 		free_memblock ( old_block, old_total_size );
+		VALGRIND_MAKE_MEM_NOACCESS ( old_block, offsetof ( struct autosized_block, data ) );
+		VALGRIND_FREELIKE_BLOCK ( old_ptr, 0 );
 	}
 
 	return new_ptr;
@@ -360,6 +405,7 @@ void mpopulate ( void *start, size_t len ) {
  *
  */
 static void init_heap ( void ) {
+	VALGRIND_MAKE_MEM_NOACCESS ( heap, sizeof ( heap ) );
 	mpopulate ( heap, sizeof ( heap ) );
 }
 

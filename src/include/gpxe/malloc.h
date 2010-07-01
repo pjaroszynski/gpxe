@@ -19,6 +19,8 @@ FILE_LICENCE ( GPL2_OR_LATER );
  */
 #include <stdlib.h>
 
+#include <valgrind/memcheck.h>
+
 extern size_t freemem;
 
 extern void * __malloc alloc_memblock ( size_t size, size_t align );
@@ -38,7 +40,10 @@ extern void mdumpfree ( void );
  * @c align must be a power of two.  @c size may not be zero.
  */
 static inline void * __malloc malloc_dma ( size_t size, size_t phys_align ) {
-	return alloc_memblock ( size, phys_align );
+	void * ptr = alloc_memblock ( size, phys_align );
+	if ( ptr && size )
+		VALGRIND_MALLOCLIKE_BLOCK ( ptr, size, 0, 0 );
+	return ptr;
 }
 
 /**
@@ -54,6 +59,7 @@ static inline void * __malloc malloc_dma ( size_t size, size_t phys_align ) {
  */
 static inline void free_dma ( void *ptr, size_t size ) {
 	free_memblock ( ptr, size );
+	VALGRIND_FREELIKE_BLOCK ( ptr, 0 );
 }
 
 #endif /* _GPXE_MALLOC_H */
